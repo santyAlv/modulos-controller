@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Precios - Módulos de Teléfonos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>📱 Control de Precios de Módulos Javicell</h1>
+            <p class="subtitle">Gestiona los precios de tus módulos de teléfonos de forma fácil</p>
+        </header>
+
+        <div class="actions-bar">
+            <button class="btn btn-secondary btn-sm" onclick="downloadDatabase()" title="Descargar base de datos">
+                💾 Descargar DB
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dbFileInput').click()"
+                title="Cargar base de datos SQLite o archivo Excel (.xlsx, .xls)">
+                📂 Cargar DB/Excel
+            </button>
+            <input type="file" id="dbFileInput" accept=".db,.sqlite,.sqlite3,.xlsx,.xls" style="display:none"
+                onchange="loadDatabaseFile(event)">
+            <button class="btn btn-primary btn-sm" onclick="openModal()">
+                ➕ Agregar Módulo
+            </button>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="🔍 Buscar por modelo, marca o precio..."
+                class="search-input">
+        </div>
+
+        <div id="modulesContainer" class="modules-grid">
+            <!-- Los módulos se mostrarán aquí dinámicamente -->
+        </div>
+
+        <div id="emptyState" class="empty-state">
+            <p>📦 No hay módulos registrados</p>
+            <p class="empty-state-subtitle">Haz clic en "Agregar Módulo" para comenzar</p>
+        </div>
+    </div>
+
+    <!-- Modal para ver detalles del módulo -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content modal-detail">
+            <span class="close" onclick="closeDetailModal()">&times;</span>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <!-- Modal para agregar/editar módulo -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Agregar Nuevo Módulo</h2>
+            <form id="moduleForm" onsubmit="saveModule(event)">
+                <div class="form-group">
+                    <label for="model">Modelo del Teléfono *</label>
+                    <input type="text" id="model" required placeholder="Ej: iPhone 14, Samsung S23...">
+                </div>
+
+                <div class="form-group">
+                    <label for="brand">Marca *</label>
+                    <input type="text" id="brand" required placeholder="Ej: Apple, Samsung, Xiaomi...">
+                </div>
+
+                <div class="form-group">
+                    <label for="imageFile">Imagen del Módulo</label>
+                    <input type="file" id="imageFile" accept="image/*" onchange="handleImageSelect(event)">
+                    <small>Selecciona una imagen desde tu computadora</small>
+                    <div id="imagePreview" class="image-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="price">Precio (USD) *</label>
+                    <input type="number" id="price" required min="0" step="0.01" placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Descripción</label>
+                    <textarea id="description" rows="3"
+                        placeholder="Información adicional sobre el módulo..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="db.js"></script>
+    <script src="script.js"></script>
+    <script src="import_script.js"></script>
+</body>
+
+</html>

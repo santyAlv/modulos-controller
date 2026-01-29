@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initDatabase();
         await loadModules();
         setupSearch();
+        await fixIPhoneBrands(); // Corregir marcas de iPhone al iniciar
     } catch (error) {
         console.error('Error al inicializar la aplicación:', error);
         alert('Error al inicializar la base de datos. Por favor recarga la página.');
@@ -21,6 +22,13 @@ async function loadModules() {
     try {
         modules = await getAllModules();
         renderModules();
+
+        // Habilitar botón de cámara cuando los datos estén listos
+        const cameraBtn = document.getElementById('cameraBtn');
+        if (cameraBtn) {
+            cameraBtn.disabled = false;
+            cameraBtn.title = "Buscar por foto (Cámara/Galería)";
+        }
     } catch (error) {
         console.error('Error al cargar módulos:', error);
     }
@@ -198,36 +206,28 @@ function closeModal() {
 async function saveModule(event) {
     event.preventDefault();
 
-    console.log('🟢 Iniciando guardado de módulo...');
-
     const model = document.getElementById('model').value.trim();
     const brand = document.getElementById('brand').value.trim();
     const price = parseFloat(document.getElementById('price').value);
     const description = document.getElementById('description').value.trim();
 
-    console.log(`📝 Datos del formulario: ${model} (${brand}) - $${price}`);
-
     try {
         let success = false;
 
         if (editingId) {
-            // Editar módulo existente
-            console.log(`✏️ Editando módulo existente: ${editingId}`);
             const existingModule = await getModuleById(editingId);
             if (existingModule) {
                 const updatedModule = {
                     id: editingId,
                     model,
                     brand,
-                    imageData: currentImageData || existingModule.imageData || null,
+                    imageData: currentImageData, // Usar currentImageData directamente para permitir null
                     price,
                     description: description || null
                 };
                 success = await updateModule(updatedModule);
             }
         } else {
-            // Agregar nuevo módulo
-            console.log('➕ Agregando nuevo módulo...');
             const newModule = {
                 id: generateId(),
                 model,
@@ -237,35 +237,23 @@ async function saveModule(event) {
                 description: description || null,
                 createdAt: new Date().toISOString()
             };
-            console.log(`🆔 ID generado: ${newModule.id}`);
             success = await insertModule(newModule);
         }
 
         if (success !== false) {
-            console.log('✅ Módulo guardado exitosamente');
-
-            // Recargar módulos para mostrar los cambios
             await loadModules();
-
-            // Cerrar modal
             closeModal();
-
-            // Mostrar mensaje de éxito al usuario
             const mensaje = editingId ? 'Módulo actualizado correctamente' : 'Módulo agregado correctamente';
             showSuccessMessage(mensaje);
-        } else {
-            console.error('❌ Error: La función de guardado retornó false');
-            alert('No se pudo guardar el módulo. Por favor revisa la consola para más detalles.');
         }
     } catch (error) {
-        console.error('❌ Error al guardar módulo:', error);
+        console.error('Error al guardar módulo:', error);
         alert('Error al guardar el módulo: ' + error.message);
     }
 }
 
 // Mostrar mensaje de éxito temporal
 function showSuccessMessage(message) {
-    // Crear elemento de notificación
     const notification = document.createElement('div');
     notification.className = 'success-notification';
     notification.textContent = '✅ ' + message;
@@ -284,7 +272,6 @@ function showSuccessMessage(message) {
 
     document.body.appendChild(notification);
 
-    // Remover después de 3 segundos
     setTimeout(() => {
         notification.style.opacity = '0';
         notification.style.transition = 'opacity 0.3s ease-out';
@@ -300,22 +287,16 @@ function showSuccessMessage(message) {
 function handleImageSelect(event) {
     const file = event.target.files[0];
     if (file) {
-        // Validar que sea una imagen
         if (!file.type.startsWith('image/')) {
             alert('Por favor selecciona un archivo de imagen válido');
             event.target.value = '';
             return;
         }
 
-        // Convertir a base64
         const reader = new FileReader();
         reader.onload = function (e) {
             currentImageData = e.target.result;
             showImagePreview(currentImageData);
-        };
-        reader.onerror = function () {
-            alert('Error al cargar la imagen. Por favor intenta de nuevo.');
-            event.target.value = '';
         };
         reader.readAsDataURL(file);
     } else {
@@ -338,8 +319,25 @@ function showImagePreview(imageData) {
 // Quitar imagen seleccionada
 function removeImage() {
     currentImageData = null;
-    document.getElementById('imageFile').value = '';
+    const imageFile = document.getElementById('imageFile');
+    if (imageFile) imageFile.value = '';
     document.getElementById('imagePreview').innerHTML = '';
+}
+
+// Corregir marcas de iPhone (cambiar Motorola/otros por Apple)
+async function fixIPhoneBrands() {
+    let changed = false;
+    for (const module of modules) {
+        if (module.model.toLowerCase().includes('iphone') && module.brand.toLowerCase() !== 'apple') {
+            console.log(`🔧 Corrigiendo marca para ${module.model}: ${module.brand} -> Apple`);
+            module.brand = 'Apple';
+            await updateModule(module);
+            changed = true;
+        }
+    }
+    if (changed) {
+        renderModules();
+    }
 }
 
 // Editar módulo
@@ -363,15 +361,20 @@ async function deleteModule(moduleId) {
 // Configurar búsqueda
 function setupSearch() {
     const searchInput = document.getElementById('searchInput');
+    if (!searchInput) return;
+
     searchInput.addEventListener('input', async (e) => {
         const query = e.target.value.trim();
+
+        // Ocultar resultado de IA al empezar a escribir manualmente
+        const iaResult = document.getElementById('iaResult');
+        if (iaResult) iaResult.style.display = 'none';
 
         if (query === '') {
             renderModules();
             return;
         }
 
-        // Buscar en base de datos
         const filtered = await searchModules(query);
         renderModules(filtered);
     });
@@ -398,7 +401,6 @@ function escapeHtml(text) {
 async function downloadDatabase() {
     try {
         downloadDatabaseAsExcel();
-        // Mostrar mensaje de confirmación
         setTimeout(() => {
             const now = new Date();
             const dateStr = now.toISOString().split('T')[0];
@@ -426,27 +428,16 @@ async function loadDatabaseFile(event) {
 
     try {
         if (isExcel) {
-            // Procesar archivo Excel
             await loadFromExcel(file);
         } else {
-            // Procesar archivo SQLite
             const fileBuffer = await loadDatabaseFromFile(file);
-
-            // Reinicializar base de datos con el archivo cargado
             db = null;
             dbInitialized = false;
             await initDatabase(fileBuffer);
-
-            // Guardar en LocalStorage
             autosaveDatabase();
-
-            // Recargar módulos
             await loadModules();
-
             alert('Base de datos cargada correctamente');
         }
-
-        // Limpiar input
         event.target.value = '';
     } catch (error) {
         console.error('Error al cargar archivo:', error);
@@ -458,17 +449,12 @@ async function loadDatabaseFile(event) {
 async function loadFromExcel(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-
         reader.onload = async function (e) {
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-
-                // Obtener la primera hoja
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-
-                // Convertir a JSON
                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
                 if (jsonData.length === 0) {
@@ -477,44 +463,34 @@ async function loadFromExcel(file) {
                     return;
                 }
 
-                // Asegurar que la base de datos esté inicializada
                 if (!dbInitialized || !db) {
                     db = null;
                     dbInitialized = false;
                     await initDatabase();
                 }
 
-                // Mapear columnas de Excel a módulos
-                // Acepta diferentes nombres de columnas (case insensitive)
                 let modulesLoaded = 0;
                 let modulesError = 0;
 
                 for (const row of jsonData) {
                     try {
-                        // Buscar columnas (case insensitive)
                         const model = row['Modelo'] || row['modelo'] || row['Model'] || row['model'] || row['MODELO'] || '';
                         const brand = row['Marca'] || row['marca'] || row['Brand'] || row['brand'] || row['MARCA'] || '';
                         const price = row['Precio'] || row['precio'] || row['Price'] || row['price'] || row['PRECIO'] || 0;
                         const description = row['Descripción'] || row['descripción'] || row['Description'] || row['description'] || row['DESCRIPCIÓN'] || row['Descripcion'] || '';
                         const imageUrl = row['Imagen'] || row['imagen'] || row['Image'] || row['image'] || row['IMAGEN'] || '';
 
-                        // Validar datos requeridos
                         if (!model || !brand || !price) {
-                            console.warn('Fila omitida - faltan datos requeridos:', row);
                             modulesError++;
                             continue;
                         }
 
-                        // Convertir precio a número
                         const priceNum = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^0-9.-]/g, ''));
-
                         if (isNaN(priceNum) || priceNum <= 0) {
-                            console.warn('Fila omitida - precio inválido:', row);
                             modulesError++;
                             continue;
                         }
 
-                        // Crear módulo
                         const module = {
                             id: generateId(),
                             model: String(model).trim(),
@@ -525,36 +501,24 @@ async function loadFromExcel(file) {
                             createdAt: new Date().toISOString()
                         };
 
-                        // Insertar en la base de datos
                         insertModule(module);
                         modulesLoaded++;
-
                     } catch (error) {
-                        console.error('Error al procesar fila:', row, error);
                         modulesError++;
                     }
                 }
 
-                // Recargar módulos
                 await loadModules();
-
-                // Mostrar resultado
                 let message = `${modulesLoaded} módulo(s) cargado(s) correctamente desde Excel.`;
                 if (modulesError > 0) {
                     message += `\n${modulesError} fila(s) tuvieron errores y fueron omitidas.`;
                 }
                 alert(message);
-
                 resolve();
             } catch (error) {
                 reject(error);
             }
         };
-
-        reader.onerror = function (error) {
-            reject(new Error('Error al leer el archivo Excel'));
-        };
-
         reader.readAsArrayBuffer(file);
     });
 }
@@ -563,8 +527,6 @@ async function loadFromExcel(file) {
 async function saveModules() {
     try {
         renderModules();
-        // Opcional: puedes activar la descarga automática aquí si lo deseas
-        // downloadDatabaseFile();
     } catch (error) {
         console.error('Error al guardar módulos:', error);
     }
@@ -574,12 +536,127 @@ async function saveModules() {
 window.onclick = function (event) {
     const modal = document.getElementById('modal');
     const detailModal = document.getElementById('detailModal');
-
-    if (event.target === modal) {
-        closeModal();
-    }
-    if (event.target === detailModal) {
-        closeDetailModal();
-    }
+    if (event.target === modal) closeModal();
+    if (event.target === detailModal) closeDetailModal();
 }
 
+// ==========================================
+// BÚSQUEDA VISUAL (IA)
+// ==========================================
+
+async function handleCameraCapture(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const searchInput = document.getElementById('searchInput');
+    const iaResult = document.getElementById('iaResult');
+    const iaModelName = document.getElementById('iaModelName');
+
+    // Mostrar indicador de carga
+    loadingIndicator.style.display = 'block';
+    iaResult.style.display = 'none';
+    searchInput.value = 'Analizando imagen...';
+    searchInput.disabled = true;
+
+    try {
+        // Llamar a la IA (función global expuesta por ai_service.js)
+        if (typeof window.findBestVisualMatch !== 'function') {
+            throw new Error('El servicio de IA no está cargado correctamente.');
+        }
+
+        // Usar la nueva función de comparación visual directa
+        console.log(`📦 Enviando ${modules.length} modelos como contexto a la IA...`);
+        const modelName = await window.findBestVisualMatch(file, modules);
+
+        if (modelName) {
+            if (modelName === 'Error de Cuota') {
+                searchInput.value = '';
+            } else if (modelName === 'Desconocido') {
+                alert('No se pudo identificar el modelo. Intenta con una foto más clara.');
+                searchInput.value = '';
+            } else {
+                // Limpiar el nombre para que solo busque el modelo (quitar marcas comunes de forma recursiva)
+                let searchTerms = modelName.trim();
+                const brands = ['redmi', 'xiaomi', 'samsung', 'motorola', 'moto', 'iphone', 'apple', 'realme', 'oppo', 'vivo', 'huawei', 'honor', 'infinix', 'tecno', 'google', 'pixel', 'nokia', 'sony', 'lg', 'zte', 'alcatel', 'tcl'];
+                const suffixes = ['original', 'con marco', 'sin marco', 'oled', 'incell', 'tft', 'amoled', 'premium', 'calidad', 'display', 'pantalla', 'modulo', 'completo'];
+
+                let changed = true;
+                while (changed) {
+                    changed = false;
+                    let lowerSearch = searchTerms.toLowerCase();
+
+                    // Quitar marcas al inicio
+                    for (const brand of brands) {
+                        if (lowerSearch.startsWith(brand + ' ')) {
+                            searchTerms = searchTerms.substring(brand.length + 1).trim();
+                            changed = true;
+                            break;
+                        } else if (lowerSearch === brand) {
+                            searchTerms = '';
+                            changed = true;
+                            break;
+                        }
+                    }
+
+                    if (changed) continue;
+
+                    // Quitar sufijos al final
+                    for (const suffix of suffixes) {
+                        if (lowerSearch.endsWith(' ' + suffix)) {
+                            searchTerms = searchTerms.substring(0, searchTerms.length - (suffix.length + 1)).trim();
+                            changed = true;
+                            break;
+                        } else if (lowerSearch.includes(' ' + suffix + ' ')) {
+                            // También quitar si está en el medio (ej: "A03 Core Original Con Marco")
+                            searchTerms = searchTerms.replace(new RegExp(' ' + suffix + ' ', 'gi'), ' ').trim();
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Mostrar resultado original en la interfaz
+                iaResult.style.display = 'block';
+                iaModelName.textContent = modelName;
+
+                // NUEVA LÓGICA: Guardar imagen si el módulo no tiene una
+                try {
+                    const matchingModule = modules.find(m => m.model === modelName);
+                    if (matchingModule && !matchingModule.imageData) {
+                        console.log(`📸 Asignando imagen escaneada al módulo: ${modelName}`);
+
+                        // Convertir a base64 (usando FileReader para simplicidad en script.js)
+                        const reader = new FileReader();
+                        reader.onload = async (e) => {
+                            matchingModule.imageData = e.target.result;
+                            await updateModule(matchingModule);
+                            renderModules();
+                            console.log('✅ Imagen guardada automáticamente');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                } catch (imgErr) {
+                    console.warn('No se pudo guardar la imagen automáticamente:', imgErr);
+                }
+
+                // Poner solo el modelo en el buscador
+                searchInput.value = searchTerms;
+                setupSearch();
+                const inputEvent = new Event('input');
+                searchInput.dispatchEvent(inputEvent);
+            }
+        } else {
+            searchInput.value = '';
+        }
+    } catch (error) {
+        console.error('Error en búsqueda visual:', error);
+        alert('Error al analizar la imagen. Asegúrate de tener la API Key configurada.');
+        searchInput.value = '';
+    } finally {
+        loadingIndicator.style.display = 'none';
+        searchInput.disabled = false;
+        searchInput.focus();
+        event.target.value = '';
+    }
+}

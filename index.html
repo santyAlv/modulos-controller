@@ -31,8 +31,32 @@
         </div>
 
         <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="🔍 Buscar por modelo, marca o precio..."
-                class="search-input">
+            <div class="search-flex-container">
+                <div class="search-input-wrapper">
+                    <input type="text" id="searchInput" placeholder="🔍 Buscar por modelo, marca o precio..."
+                        class="search-input">
+                </div>
+                <button id="cameraBtn" class="camera-btn-premium"
+                    onclick="document.getElementById('cameraInput').click()" title="Buscar por foto (Cámara/Galería)"
+                    disabled>
+                    <span class="camera-icon">📸</span>
+                    <span class="camera-text">Escanear Celular</span>
+                </button>
+            </div>
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;"
+                onchange="handleCameraCapture(event)">
+            <div id="iaResult" class="ia-result-card">
+                <div class="ia-result-header">
+                    <span class="ia-badge">IA</span>
+                    <span>Modelo detectado:</span>
+                </div>
+                <strong id="iaModelName"></strong>
+            </div>
+        </div>
+
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>🤖 Analizando imagen con IA...</p>
         </div>
 
         <div id="modulesContainer" class="modules-grid">
@@ -104,6 +128,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="db.js"></script>
+    <script type="module" src="ai_service.js?v=6"></script>
     <script src="script.js"></script>
     <script src="import_script.js"></script>
 </body>

@@ -11,7 +11,7 @@ export async function initAI() {
     isInitializing = true;
 
     initPromise = (async () => {
-        if (!CONFIG.GROQ_API_KEY) {
+        if (!window.CONFIG || !window.CONFIG.GROQ_API_KEY) {
             console.warn('⚠️ No hay API Key de Groq configurada.');
             return false;
         }
@@ -78,7 +78,7 @@ async function discoverVisionModels() {
 export async function identifyPhoneModel(imageFile, modules = []) {
     await initAI();
 
-    if (!CONFIG.GROQ_API_KEY) {
+    if (!window.CONFIG || !window.CONFIG.GROQ_API_KEY) {
         alert('⚠️ Falta configurar la API Key de Groq en config.js');
         return null;
     }

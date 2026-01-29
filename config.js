@@ -6,7 +6,7 @@ const SUPABASE_CONFIG = {
 
 // Configuración General
 const CONFIG = {
-    GROQ_API_KEY: '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'
+    GROQ_API_KEY: typeof LOCAL_CONFIG !== 'undefined' ? LOCAL_CONFIG.GROQ_API_KEY : ''
 };
 
 // Configuración de IndexedDB

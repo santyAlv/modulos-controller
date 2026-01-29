@@ -5,7 +5,8 @@ const SUPABASE_CONFIG = {
 };
 
 // Configuración General
-const CONFIG = {
+console.log('⚙️ Cargando configuración...');
+window.CONFIG = {
     GROQ_API_KEY: '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'
 };
 

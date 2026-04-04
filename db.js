@@ -149,6 +149,8 @@ async function syncFromSupabase() {
                     model: module.model,
                     brand: module.brand,
                     price: module.price,
+                    pricePin: module.price_pin,
+                    priceVidrio: module.price_vidrio,
                     description: module.description,
                     imageData: module.image_url,
                     createdAt: module.created_at
@@ -158,6 +160,11 @@ async function syncFromSupabase() {
             }
 
             console.log('✅ Sincronización completada');
+            
+            // Recargar módulos en pantalla si es que hubo actualizaciones desde la nube
+            if (typeof loadModules === 'function') {
+                loadModules();
+            }
         } else {
             console.log('ℹ️ No hay datos en Supabase');
         }
@@ -229,6 +236,8 @@ async function saveToSupabase(module) {
             model: module.model,
             brand: module.brand,
             price: module.price,
+            price_pin: module.pricePin || 0,
+            price_vidrio: module.priceVidrio || 0,
             description: module.description || null,
             image_url: imageUrl || null,
             created_at: module.createdAt,
@@ -243,8 +252,10 @@ async function saveToSupabase(module) {
             console.error('❌ Error al guardar en Supabase:', error.message);
             if (error.message.includes('Could not find the table')) {
                 alert('⚠️ Error Crítico: No se encuentra la tabla "modulos" en Supabase.\n\nPor favor ejecuta el script SQL de creación de tabla en el SQL Editor de Supabase.');
+            } else if (error.message.includes('Could not find the column \'price_pin\'') || error.message.includes('price_vidrio')) {
+                alert('⚠️ Error de Supabase: Faltan las columnas de precios extra.\n\nPor favor, ingresa a Supabase y agrega 2 nuevas columnas numéricas: "price_pin" y "price_vidrio" a tu tabla "modulos".');
             } else if (error.message.includes('Could not find the')) {
-                alert('⚠️ Error de Supabase: Faltan columnas en la tabla.\n\nAsegúrate de crear las columnas: brand, model, price, description, image_url');
+                alert('⚠️ Error de Supabase: Faltan columnas en la tabla.\n\nAsegúrate de crear las columnas: brand, model, price, price_pin, price_vidrio, description, image_url');
             }
             return false;
         }
@@ -565,16 +576,21 @@ async function loadFromExcel(file) {
 
                 for (const row of jsonData) {
                     try {
-                        const model = row['Modelo'] || row['Model'] || '';
-                        const brand = row['Marca'] || row['Brand'] || '';
-                        const price = row['Precio'] || row['Price'] || 0;
-                        const description = row['Descripción'] || row['Description'] || '';
+                        const model = row['Modelo'] || row['modelo'] || row['Model'] || row['model'] || row['MODELO'] || '';
+                        const brand = row['Marca'] || row['marca'] || row['Brand'] || row['brand'] || row['MARCA'] || '';
+                        const price = row['Precio'] || row['precio'] || row['Price'] || row['price'] || row['PRECIO'] || 0;
+                        const pricePinRaw = row['Precio Pin'] || row['precio pin'] || row['Precio_Pin'] || row['price_pin'] || 0;
+                        const priceVidrioRaw = row['Precio Vidrio'] || row['precio vidrio'] || row['Precio_Vidrio'] || row['price_vidrio'] || 0;
+                        const description = row['Descripción'] || row['descripción'] || row['Description'] || row['description'] || row['DESCRIPCIÓN'] || row['Descripcion'] || '';
+                        const imageUrl = row['Imagen'] || row['imagen'] || row['Image'] || row['image'] || row['IMAGEN'] || '';
 
                         if (!model || !brand || !price) {
                             continue;
                         }
 
                         const priceNum = typeof price === 'number' ? price : parseFloat(String(price).replace(/[^0-9.-]/g, ''));
+                        const pricePinNum = typeof pricePinRaw === 'number' ? pricePinRaw : parseFloat(String(pricePinRaw).replace(/[^0-9.-]/g, '')) || 0;
+                        const priceVidrioNum = typeof priceVidrioRaw === 'number' ? priceVidrioRaw : parseFloat(String(priceVidrioRaw).replace(/[^0-9.-]/g, '')) || 0;
 
                         if (isNaN(priceNum) || priceNum <= 0) {
                             continue;
@@ -585,6 +601,8 @@ async function loadFromExcel(file) {
                             model: String(model).trim(),
                             brand: String(brand).trim(),
                             price: priceNum,
+                            pricePin: pricePinNum,
+                            priceVidrio: priceVidrioNum,
                             description: description ? String(description).trim() : null,
                             imageData: null,
                             createdAt: new Date().toISOString()

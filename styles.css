@@ -64,6 +64,39 @@ header h1 {
     font-size: 0.95rem;
 }
 
+/* Category Tabs */
+.category-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 4px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.2s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-btn:hover {
+    color: var(--primary-color);
+    background-color: var(--card-bg);
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    border-bottom: 3px solid var(--primary-color);
+}
+
 /* Search Bar & Camera Button */
 .search-bar {
     margin-bottom: 30px;
@@ -310,6 +343,20 @@ header h1 {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+.category-badge {
+    position: absolute;
+    top: -12px;
+    right: 20px;
+    background: var(--primary-color);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    box-shadow: var(--shadow);
 }
 
 .module-brand {
@@ -442,6 +489,13 @@ header h1 {
     color: var(--primary-color);
 }
 
+.price-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 15px;
+    margin-bottom: 5px;
+}
+
 .form-group {
     margin-bottom: 20px;
 }
@@ -454,7 +508,8 @@ header h1 {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-select {
     width: 100%;
     padding: 12px;
     border: 2px solid var(--border-color);
@@ -462,10 +517,12 @@ header h1 {
     font-size: 1rem;
     font-family: inherit;
     transition: all 0.3s ease;
+    background-color: var(--card-bg);
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-select:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);

@@ -2,6 +2,31 @@
 let modules = [];
 let editingId = null;
 let currentImageData = null;
+let currentCategory = 'modulo'; // por defecto: 'modulo', 'pin', 'vidrio'
+
+// Cambiar de categoría (pestañas)
+function setCategory(category) {
+    currentCategory = category;
+    
+    // Actualizar botones de pestañas
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(tab => {
+        if (tab.getAttribute('data-category') === category) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+
+    // Limpiar búsqueda si hay
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+
+    // Volver a renderizar
+    renderModules();
+}
 
 // Cargar módulos al iniciar
 document.addEventListener('DOMContentLoaded', async () => {
@@ -47,13 +72,28 @@ async function saveModules() {
 function renderModules(filteredModules = null) {
     const container = document.getElementById('modulesContainer');
     const emptyState = document.getElementById('emptyState');
-    const modulesToRender = filteredModules || modules;
+    
+    let modulesToRender = filteredModules || modules;
 
     container.innerHTML = '';
 
     if (modulesToRender.length === 0) {
         emptyState.classList.add('show');
         container.style.display = 'none';
+        
+        // Cambiar ícono y texto según categoría
+        const icon = document.getElementById('emptyStateIcon');
+        const msg = document.getElementById('emptyStateMessage');
+        if (currentCategory === 'modulo') {
+            icon.textContent = '📱';
+            msg.textContent = 'No hay ítems registrados en tu búsqueda. Agrega módulos.';
+        } else if (currentCategory === 'pin') {
+            icon.textContent = '🔌';
+            msg.textContent = 'No hay ítems registrados en tu búsqueda.';
+        } else {
+            icon.textContent = '🔍';
+            msg.textContent = 'No hay ítems registrados en tu búsqueda.';
+        }
     } else {
         emptyState.classList.remove('show');
         container.style.display = 'grid';
@@ -73,6 +113,10 @@ function createModuleCard(module) {
 
     const defaultImage = '📱';
     const imageData = module.imageData || '';
+    
+    let displayPrice = module.price || 0;
+    if (currentCategory === 'pin') displayPrice = module.pricePin || 0;
+    else if (currentCategory === 'vidrio') displayPrice = module.priceVidrio || 0;
 
     card.innerHTML = `
         <div class="module-image">
@@ -84,7 +128,7 @@ function createModuleCard(module) {
         <div class="module-info">
             <div class="module-brand">${escapeHtml(module.brand)}</div>
             <div class="module-model">${escapeHtml(module.model)}</div>
-            <div class="module-price">$${formatPrice(module.price)}</div>
+            <div class="module-price">$${formatPrice(displayPrice)}</div>
             ${module.description ?
             `<div class="module-description">${escapeHtml(module.description)}</div>` :
             ''
@@ -113,6 +157,10 @@ async function openDetailModal(moduleId) {
 
     const defaultImage = '📱';
     const imageData = module.imageData || '';
+    
+    let displayPrice = module.price || 0;
+    if (currentCategory === 'pin') displayPrice = module.pricePin || 0;
+    else if (currentCategory === 'vidrio') displayPrice = module.priceVidrio || 0;
 
     detailContent.innerHTML = `
         <div class="detail-container">
@@ -125,7 +173,7 @@ async function openDetailModal(moduleId) {
             <div class="detail-info">
                 <div class="detail-brand">${escapeHtml(module.brand)}</div>
                 <h2 class="detail-model">${escapeHtml(module.model)}</h2>
-                <div class="detail-price">$${formatPrice(module.price)}</div>
+                <div class="detail-price">$${formatPrice(displayPrice)}</div>
                 ${module.description ?
             `<div class="detail-description">
                         <h3>Descripción</h3>
@@ -168,12 +216,14 @@ async function openModal(moduleId = null) {
     imageFile.value = '';
 
     if (moduleId) {
-        title.textContent = 'Editar Módulo';
+        title.textContent = 'Editar Ítem';
         const module = await getModuleById(moduleId);
         if (module) {
             document.getElementById('model').value = module.model;
             document.getElementById('brand').value = module.brand;
-            document.getElementById('price').value = module.price;
+            document.getElementById('price').value = module.price || '';
+            document.getElementById('pricePin').value = module.pricePin || '';
+            document.getElementById('priceVidrio').value = module.priceVidrio || '';
             document.getElementById('description').value = module.description || '';
 
             // Mostrar imagen actual si existe
@@ -183,7 +233,7 @@ async function openModal(moduleId = null) {
             }
         }
     } else {
-        title.textContent = 'Agregar Nuevo Módulo';
+        title.textContent = 'Agregar Nuevo Ítem';
         form.reset();
         imagePreview.innerHTML = '';
     }
@@ -208,7 +258,9 @@ async function saveModule(event) {
 
     const model = document.getElementById('model').value.trim();
     const brand = document.getElementById('brand').value.trim();
-    const price = parseFloat(document.getElementById('price').value);
+    const price = parseFloat(document.getElementById('price').value) || 0;
+    const pricePin = parseFloat(document.getElementById('pricePin').value) || 0;
+    const priceVidrio = parseFloat(document.getElementById('priceVidrio').value) || 0;
     const description = document.getElementById('description').value.trim();
 
     try {
@@ -223,6 +275,8 @@ async function saveModule(event) {
                     brand,
                     imageData: currentImageData, // Usar currentImageData directamente para permitir null
                     price,
+                    pricePin,
+                    priceVidrio,
                     description: description || null
                 };
                 success = await updateModule(updatedModule);
@@ -234,6 +288,8 @@ async function saveModule(event) {
                 brand,
                 imageData: currentImageData || null,
                 price,
+                pricePin,
+                priceVidrio,
                 description: description || null,
                 createdAt: new Date().toISOString()
             };
@@ -243,7 +299,7 @@ async function saveModule(event) {
         if (success !== false) {
             await loadModules();
             closeModal();
-            const mensaje = editingId ? 'Módulo actualizado correctamente' : 'Módulo agregado correctamente';
+            const mensaje = editingId ? 'Ítem actualizado correctamente' : 'Ítem agregado correctamente';
             showSuccessMessage(mensaje);
         }
     } catch (error) {

@@ -37,6 +37,12 @@ async function discoverVisionModels() {
         const response = await fetch("https://api.groq.com/openai/v1/models", {
             headers: { "Authorization": `Bearer ${CONFIG.GROQ_API_KEY}` }
         });
+
+        if (response.status === 401) {
+            console.error("❌ Error 401: API Key de Groq inválida o no autorizada.");
+            throw new Error("API Key inválida");
+        }
+
         const data = await response.json();
 
         if (data.data) {
@@ -56,18 +62,20 @@ async function discoverVisionModels() {
 
             // Si no detectamos ninguno por nombre, usamos la lista confirmada de Llama 4
             if (availableVisionModels.length === 0) {
-                console.warn("⚠️ No se detectaron modelos por nombre. Usando modelos Llama 4 confirmados.");
+                console.warn("⚠️ No se detectaron modelos por nombre. Usando modelos de visión recomendados.");
                 availableVisionModels = [
-                    "meta-llama/llama-4-maverick-17b-128e-instruct",
-                    "meta-llama/llama-4-scout-17b-16e-instruct"
+                    "llama-3.2-11b-vision-preview",
+                    "llama-3.2-90b-vision-preview",
+                    "llama-3.2-11b-vision-preview-v1",
+                    "llama-3.2-90b-vision-preview-v1"
                 ];
             }
         }
     } catch (e) {
-        console.error("❌ Error al descubrir modelos:", e);
+        console.error("❌ Error al descubrir modelos:", e.message);
         availableVisionModels = [
-            "meta-llama/llama-4-maverick-17b-128e-instruct",
-            "meta-llama/llama-4-scout-17b-16e-instruct"
+            "llama-3.2-11b-vision-preview",
+            "llama-3.2-90b-vision-preview"
         ];
     }
 }
@@ -144,6 +152,10 @@ REGLAS CRÍTICAS:
                         max_tokens: 50
                     })
                 });
+
+                if (response.status === 401) {
+                    throw new Error("401: API Key de Groq inválida. Revisá config.js");
+                }
 
                 const data = await response.json();
 
